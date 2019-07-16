@@ -85,7 +85,7 @@ int alloc(TableHachage* th, int P, int R){
 	}
 
 	th->tabH = malloc( ( P + R) * sizeof(Couple) );
-	th->taille = P;
+	th->taille = P + R;
 
 	if(th->tabH == NULL){
 		fprintf(stderr, "can't allocate the tabel ! : alloc\n");
@@ -109,6 +109,59 @@ int hach(Client elt, int M){
 
 int inserHCO(Client elt, TableHachage* th){
 	int i = hach(elt, th->taille);
+
+	if( estEtat(i, *th, LIBRE) ){
+		th->tabH[i].donnee = elt;
+		th->tabH[i].lien = 0;
+		th->tabH[i].etat = OCCUPE;
+
+		return 0;
+	}
+
+	int l = lien(i, *th);
+	int lib = 0;
+	int arret = 0;
+
+	while( !arret && l == 0 ){
+		if( estEtat(i, *th, LIBRE) && lib == 0 )
+			lib = i;
+
+		if( estEtat(i, *th, OCCUPE) && equals(client(i, *th), elt) )
+			arret = 1;
+		else{
+			i = l;
+			l = lien(i, *th);
+		}
+	}
+
+	if( lib == 0 ){
+		if( arret )
+			return 0;
+
+		int R = th->taille;
+
+		while( R >= 0 && !estEtat(R, *th, VIDE) )
+			R = R - 1;
+
+		if( R == 0 )
+			return 1;
+
+		th->tabH[i].lien = R;
+		th->tabH[R].donnee = elt;
+		th->tabH[R].etat = OCCUPE;
+
+		return 0;
+	}
+	else{
+		th->tabH[lib].donnee = elt;
+		th->tabH[lib].etat = OCCUPE;
+
+		if( arret )
+			th->tabH[i].etat = LIBRE;
+
+		return 0;
+	}
+
 }
 
 int rechercheHCO(Client elt, TableHachage th){
