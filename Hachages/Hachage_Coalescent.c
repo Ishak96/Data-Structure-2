@@ -3,6 +3,7 @@
 #include<time.h>
 #include<malloc.h>
 #include <string.h>
+#include <time.h>
 
 #define FUNC_ERROR -1
 
@@ -14,8 +15,8 @@ typedef struct
 	int cvc;
 	char* nom;
 	char* prenom;
-	char numero_carte[16];
-	char date[7];
+	char* numero_carte;
+	char* date;
 }Client ;
 
 typedef struct 
@@ -80,6 +81,7 @@ int equals(Client c1, Client c2){
 }
 
 int alloc(TableHachage* th, int P, int R){
+
 	if(P == 0 || R < 0){
 		fprintf(stderr, "invalid argument ! : alloc\n");
 		return FUNC_ERROR;
@@ -127,11 +129,13 @@ int inserHCO(Client elt, TableHachage* th){
 	int arret = 0;
 
 	while( !arret && l == 0 ){
-		if( estEtat(i, *th, LIBRE) && lib == 0 )
+		if( estEtat(i, *th, LIBRE) && lib == 0 ){
 			lib = i;
+		}
 
-		if( estEtat(i, *th, OCCUPE) && equals(client(i, *th), elt) )
+		if( estEtat(i, *th, OCCUPE) && equals(client(i, *th), elt) ){
 			arret = 1;
+		}
 		else{
 			i = l;
 			l = lien(i, *th);
@@ -207,8 +211,61 @@ int suppHCO(Client elt, TableHachage* th){
 }
 
 /*PROGRAMME PRINCIPAL*/
-int main(int argc, char const *argv[]){
-	
+int creatTable(char* data_file_name, TableHachage* th){
+	FILE* data_file;
+	int number_client, cvc;
+	char numero_carte[16];
+	char date[8];
+	char nom[15];
+	char prenom[15];
+
+	if( data_file_name == NULL || th == NULL ){
+		fprintf(stderr, "creatTable: invalid argument!\n");
+		return FUNC_ERROR;
+	}
+
+	data_file=fopen(data_file_name, "r+");
+
+	if( data_file == NULL ){
+		fprintf(stderr, "creatTable: open file!\n");
+		return FUNC_ERROR;
+	}
+
+	fscanf(data_file, "number of client = %d\n", &number_client);
+	alloc(th, number_client, rand()%10 + 1);
+
+	for(int i = 0; i < number_client; i++){
+		fscanf(data_file, "%s %d %s %s %s\n", numero_carte, &cvc, date, nom, prenom);
+		if( strlen(numero_carte) > 16 || strlen(date) > 7 || strlen(nom) > 15 || strlen(prenom) > 15 ){
+			fprintf(stderr, "creatTable: ivalid argument on data file line %d!\n", i + 2);
+			return FUNC_ERROR;		
+		}
+		Client client = {cvc, nom, prenom, numero_carte, date};
+
+		if( inserHCO(client, th) ){
+			fprintf(stderr, "creatTable: overflow!\n");
+			return FUNC_ERROR;				
+		}
+	}
+
+	return 0;
+}
+
+int main(int argc, char **argv){
+    srand(time(NULL));
+
+    TableHachage th;
+
+	if(argc < 2){
+		fprintf(stderr, "main: invalid argument!\n");
+		printf("usage: %s [data file]\n", argv[0]);
+		return FUNC_ERROR;
+	}
+
+	if(creatTable(argv[1], &th) < 0){
+		fprintf(stderr, "main: creatTable!\n");
+		return FUNC_ERROR;		
+	}
 
 	return 0;
 }
