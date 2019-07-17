@@ -11,10 +11,11 @@ typedef enum {VIDE, LIBRE, OCCUPE} TEtat;
 /*----  DECLARATION DE LA STRUCTURE   ----*/
 typedef struct
 {
-	int age;
+	int cvc;
 	char* nom;
 	char* prenom;
 	char numero_carte[16];
+	char date[7];
 }Client ;
 
 typedef struct 
@@ -74,8 +75,8 @@ int equals(Client c1, Client c2){
 		return 0;
 	}
 
-	return c1.age == c2.age && !strcmp(c1.nom, c2.nom) && !strcmp(c1.prenom, c2.prenom)
-			&& !strcmp(c1.numero_carte, c2.numero_carte);
+	return c1.cvc == c2.cvc && !strcmp(c1.nom, c2.nom) && !strcmp(c1.prenom, c2.prenom)
+			&& !strcmp(c1.numero_carte, c2.numero_carte) && strcmp(c1.date, c2.date);
 }
 
 int alloc(TableHachage* th, int P, int R){
@@ -91,6 +92,9 @@ int alloc(TableHachage* th, int P, int R){
 		fprintf(stderr, "can't allocate the tabel ! : alloc\n");
 		return FUNC_ERROR;
 	}
+
+	for(int i = 0; i < ( P + R ); i++)
+		th->tabH[i].etat = LIBRE;
 
 	return 0;
 }
