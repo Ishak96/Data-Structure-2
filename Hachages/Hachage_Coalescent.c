@@ -6,7 +6,7 @@
 #include <time.h>
 
 #define FUNC_ERROR -1
-#define DEBUG 0
+#define DEBUG 1
 
 typedef enum {VIDE, LIBRE, OCCUPE} TEtat;
 
@@ -109,7 +109,7 @@ int alloc(TableHachage* th, int P, int R){
 	#endif
 
 	for(int i = 0; i < ( P + R ); i++){
-		th->tabH[i].etat = LIBRE;
+		th->tabH[i].etat = VIDE;
 		th->tabH[i].lien = 0;
 	}
 
@@ -131,7 +131,7 @@ int hach(Client elt, int M){
 int inserHCO(Client elt, TableHachage* th){
 	int i = hach(elt, th->taille);
 
-	if( estEtat(i, *th, LIBRE) ){
+	if( estEtat(i, *th, LIBRE) || estEtat(i, *th, VIDE)){
 		th->tabH[i].donnee = elt;
 		th->tabH[i].lien = 0;
 		th->tabH[i].etat = OCCUPE;
@@ -164,7 +164,7 @@ int inserHCO(Client elt, TableHachage* th){
 
 		int R = th->taille;
 
-		while( R >= 0 && !estEtat(R, *th, VIDE) ){
+		while( R >= 0 && !estEtat(R, *th, VIDE) && !estEtat(i, *th, LIBRE) ){
 			R = R - 1;
 		}
 
@@ -233,6 +233,36 @@ int suppHCO(Client elt, TableHachage* th){
 	return i > 0;
 }
 
+Client get_client(char* numero_carte, TableHachage th){
+	Client cli = {0};
+	Client tmp = {0};
+
+	#if(DEBUG > 0)
+		if( th.tabH == NULL || numero_carte == NULL ){
+			fprintf(stderr, "invalid argument ! : get_client\n");
+			return cli;
+		}
+	#endif
+
+	tmp.numero_carte = numero_carte;
+
+	int i = hach(tmp, th.taille);
+	int arret = 0;
+
+	while( !estEtat(i, th, VIDE) && !estEtat(i, th, LIBRE) && 
+			strcmp(client(i, th).numero_carte, numero_carte) && !arret ) {
+		if( lien(i, th) != 0 )
+			i = lien(i, th);
+		else
+			arret = 1;
+	}
+
+	if( estEtat(i, th, OCCUPE) && !strcmp(client(i, th).numero_carte, numero_carte) )
+		return client(i, th);
+	else
+		return cli;
+}
+
 /*PROGRAMME PRINCIPAL*/
 int creatTable(char* data_file_name, TableHachage* th){
 	FILE* data_file;
@@ -299,6 +329,21 @@ int main(int argc, char **argv){
 			fprintf(stderr, "main: creatTable!\n");
 			return FUNC_ERROR;	
 		#endif
+	}
+
+	char* numero_carte = "4974005147852324";
+	Client cli = get_client(numero_carte, th);
+
+	if( cli.nom != NULL && cli.prenom != NULL && cli.numero_carte != NULL ){
+		printf("|----- %s ----\n", numero_carte);
+		printf("|\t%d\t\n", cli.cvc);
+		printf("|\t%s\t\n", cli.nom);
+		printf("|\t%s\t\n", cli.prenom);
+		printf("|\t%s\t\n", cli.date);
+		printf("|-----------------------------\n");
+	}
+	else{
+		printf("Client avec numero de carte [ %s ] est introuvable\n", numero_carte);
 	}
 
 	return 0;
