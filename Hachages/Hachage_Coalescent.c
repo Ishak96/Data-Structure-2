@@ -8,8 +8,6 @@
 #define FUNC_ERROR -1
 #define DEBUG 1
 
-typedef enum {VIDE, LIBRE, OCCUPE} TEtat;
-
 /*----  DECLARATION DE LA STRUCTURE   ----*/
 typedef struct
 {
@@ -24,7 +22,7 @@ typedef struct
 {
 	Client donnee;
 	int lien;
-	TEtat etat;
+	int etat;
 }Couple;
 
 typedef struct 
@@ -33,7 +31,7 @@ typedef struct
 	Couple* tabH;
 }TableHachage;
 
-TEtat etat(int i, TableHachage th){
+int etat(int i, TableHachage th){
 	#if(DEBUG > 0)
 		if( th.tabH == NULL || i < 0 ){
 			fprintf(stderr, "invalid argument ! : etat\n");
@@ -46,7 +44,7 @@ TEtat etat(int i, TableHachage th){
 
 int lien(int i, TableHachage th){
 	#if(DEBUG > 0)
-		if( th.tabH == NULL || i < 0 || etat(i, th) == VIDE ){
+		if( th.tabH == NULL || i < 0 || etat(i, th) == -1 ){
 			fprintf(stderr, "invalid argument ! : lien\n");
 			return FUNC_ERROR;
 		}
@@ -58,7 +56,7 @@ int lien(int i, TableHachage th){
 Client client(int i, TableHachage th){
 	Client cli = {0};
 	#if(DEBUG > 0)
-		if( th.tabH == NULL || i < 0 || etat(i, th) == VIDE ){
+		if( th.tabH == NULL || i < 0 || etat(i, th) == -1 ){
 			fprintf(stderr, "invalid argument i = %d! : client\n", i);
 			return cli;
 		}
@@ -67,7 +65,7 @@ Client client(int i, TableHachage th){
 	return th.tabH[i].donnee;
 }
 
-int estEtat(int i, TableHachage th, TEtat VEtat){
+int estEtat(int i, TableHachage th, int VEtat){
 	#if(DEBUG > 0)
 		if( th.tabH == NULL || i < 0 ){
 			fprintf(stderr, "invalid argument i = %d ! : estEtat\n", i);
@@ -98,8 +96,8 @@ int alloc(TableHachage* th, int P, int R){
 		}
 	#endif
 
-	th->tabH = malloc( ( P + R) * sizeof(Couple) );
 	th->taille = P + R;
+	th->tabH = malloc( th->taille * sizeof(Couple) );
 
 	#if(DEBUG > 0)
 		if(th->tabH == NULL){
@@ -109,7 +107,7 @@ int alloc(TableHachage* th, int P, int R){
 	#endif
 
 	for(int i = 0; i < ( P + R ); i++){
-		th->tabH[i].etat = VIDE;
+		th->tabH[i].etat = -1;
 		th->tabH[i].lien = 0;
 	}
 
@@ -131,10 +129,10 @@ int hach(Client elt, int M){
 int inserHCO(Client elt, TableHachage* th){
 	int i = hach(elt, th->taille);
 
-	if( estEtat(i, *th, LIBRE) || estEtat(i, *th, VIDE)){
+	if( estEtat(i, *th, 0) || estEtat(i, *th, -1) ){
 		th->tabH[i].donnee = elt;
 		th->tabH[i].lien = 0;
-		th->tabH[i].etat = OCCUPE;
+		th->tabH[i].etat = 1;
 
 		return 0;
 	}
@@ -144,11 +142,11 @@ int inserHCO(Client elt, TableHachage* th){
 	int arret = 0;
 
 	while( !arret && l != 0 ){
-		if( estEtat(i, *th, LIBRE) && lib == 0 ){
+		if( estEtat(i, *th, 0) && lib == 0 ){
 			lib = i;
 		}
 
-		if( estEtat(i, *th, OCCUPE) && equals(client(i, *th), elt) ){
+		if( estEtat(i, *th, 1) && equals(client(i, *th), elt) ){
 			arret = 1;
 		}
 		else{
@@ -164,7 +162,7 @@ int inserHCO(Client elt, TableHachage* th){
 
 		int R = th->taille;
 
-		while( R >= 0 && !estEtat(R, *th, VIDE) && !estEtat(i, *th, LIBRE) ){
+		while( R >= 0 && !estEtat(R, *th, -1) && !estEtat(i, *th, 0) ){
 			R = R - 1;
 		}
 
@@ -174,16 +172,16 @@ int inserHCO(Client elt, TableHachage* th){
 
 		th->tabH[i].lien = R;
 		th->tabH[R].donnee = elt;
-		th->tabH[R].etat = OCCUPE;
+		th->tabH[R].etat = 1;
 
 		return 0;
 	}
 	else{
 		th->tabH[lib].donnee = elt;
-		th->tabH[lib].etat = OCCUPE;
+		th->tabH[lib].etat = 1;
 
 		if( arret ){
-			th->tabH[i].etat = LIBRE;
+			th->tabH[i].etat = 0;
 		}
 
 		return 0;
@@ -202,14 +200,14 @@ int rechercheHCO(Client elt, TableHachage th){
 	int i = hach(elt, th.taille);
 	int arret = 0;
 
-	while( !estEtat(i, th, VIDE) && !estEtat(i, th, LIBRE) && !equals(client(i, th), elt) && !arret ){
+	while( !estEtat(i, th, -1) && !estEtat(i, th, 0) && !equals(client(i, th), elt) && !arret ){
 		if( lien(i, th) != 0 )
 			i = lien(i, th);
 		else
 			arret = 1;
 	}
 
-	if( estEtat(i, th, OCCUPE) && equals(client(i, th), elt) )
+	if( estEtat(i, th, 1) && equals(client(i, th), elt) )
 		return i;
 	else
 		return FUNC_ERROR;
@@ -227,7 +225,7 @@ int suppHCO(Client elt, TableHachage* th){
 	int i = rechercheHCO(elt, *th);
 
 	if( i > 0 ){
-		th->tabH[i].etat = LIBRE;
+		th->tabH[i].etat = 0;
 	}
 
 	return i > 0;
@@ -249,7 +247,7 @@ Client get_client(char* numero_carte, TableHachage th){
 	int i = hach(tmp, th.taille);
 	int arret = 0;
 
-	while( !estEtat(i, th, VIDE) && !estEtat(i, th, LIBRE) && 
+	while( !estEtat(i, th, -1) && !estEtat(i, th, 0) && 
 			strcmp(client(i, th).numero_carte, numero_carte) && !arret ) {
 		if( lien(i, th) != 0 )
 			i = lien(i, th);
@@ -257,7 +255,7 @@ Client get_client(char* numero_carte, TableHachage th){
 			arret = 1;
 	}
 
-	if( estEtat(i, th, OCCUPE) && !strcmp(client(i, th).numero_carte, numero_carte) )
+	if( estEtat(i, th, 1) && !strcmp(client(i, th).numero_carte, numero_carte) )
 		return client(i, th);
 	else
 		return cli;
@@ -292,16 +290,28 @@ int creatTable(char* data_file_name, TableHachage* th){
 	alloc(th, number_client, rand()%10 + 1);
 
 	for(int i = 0; i < number_client; i++){
-		fscanf(data_file, "%s %d %s %s %s\n", numero_carte, &cvc, date, nom, prenom);
+		fscanf(data_file, "%s %d %s %s %s\n", numero_carte, &cvc, date, prenom, nom);
 		#if(DEBUG > 0)
 			if( strlen(numero_carte) > 16 || strlen(date) > 7 || strlen(nom) > 15 || strlen(prenom) > 15 ){
 				fprintf(stderr, "creatTable: ivalid argument on data file line %d!\n", i + 2);
 				return FUNC_ERROR;		
 			}
 		#endif
-		Client client = {cvc, nom, prenom, numero_carte, date};
 
-		
+		Client client = {0};
+		client.cvc = cvc;
+		client.nom = nom;
+		client.prenom = prenom;
+		client.numero_carte = numero_carte;
+		client.date = date;
+
+		/*printf("|----- %s ----\n", client.numero_carte);
+		printf("|\t%d\t\n", client.cvc);
+		printf("|\t%s\t\n", client.nom);
+		printf("|\t%s\t\n", client.prenom);
+		printf("|\t%s\t\n", client.date);
+		printf("|-----------------------------\n");*/
+
 		if( inserHCO(client, th) ){
 			#if(DEBUG > 0)
 				fprintf(stderr, "creatTable: overflow!\n");
@@ -331,7 +341,7 @@ int main(int argc, char **argv){
 		#endif
 	}
 
-	char* numero_carte = "4974005147852324";
+	char* numero_carte = "4974279166009401";
 	Client cli = get_client(numero_carte, th);
 
 	if( cli.nom != NULL && cli.prenom != NULL && cli.numero_carte != NULL ){
